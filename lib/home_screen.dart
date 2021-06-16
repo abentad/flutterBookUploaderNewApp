@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
 import 'package:http/http.dart' as http;
@@ -16,7 +17,6 @@ class _HomeScreenState extends State<HomeScreen> {
   GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   TextEditingController _titleController = TextEditingController();
-  TextEditingController _categoryController = TextEditingController();
   TextEditingController _descriptionController = TextEditingController();
   TextEditingController _authorController = TextEditingController();
   TextEditingController _ratingController = TextEditingController();
@@ -24,7 +24,185 @@ class _HomeScreenState extends State<HomeScreen> {
 
   File _image;
   final picker = ImagePicker();
+  Uri apiUrl = Uri.parse('https://bookapi.rentoch.com/books');
+  String valueChoised;
+  List<String> menuItems = ["Fiction", "Educational", "Non-Fiction"];
 
+  @override
+  Widget build(BuildContext context) {
+    final devHeight = MediaQuery.of(context).size.height;
+    final devWidth = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      key: _scaffoldKey,
+      body: SafeArea(
+        child: Container(
+          height: devHeight,
+          width: devWidth,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: devHeight * 0.02),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                Get.defaultDialog(
+                                  actions: [
+                                    IconButton(
+                                      onPressed: getImageFromGallery,
+                                      icon: Icon(Icons.photo_album, size: 32.0),
+                                    ),
+                                    SizedBox(width: devWidth * 0.02),
+                                    IconButton(
+                                      onPressed: getImageFromCamera,
+                                      icon: Icon(Icons.camera, size: 32.0),
+                                    ),
+                                  ],
+                                  title: "Choose Image",
+                                  middleText: "",
+                                );
+                              },
+                              child: Container(
+                                height: devHeight * 0.25,
+                                width: devWidth * 0.33,
+                                decoration: BoxDecoration(
+                                  color: Color(0xffeeeeee),
+                                  border: Border.all(color: Colors.grey),
+                                  borderRadius: BorderRadius.circular(10.0),
+                                  boxShadow: [BoxShadow(color: Colors.purple, offset: Offset(2, 7), blurRadius: 10.0)],
+                                  image: _image == null ? null : DecorationImage(image: FileImage(_image), fit: BoxFit.cover),
+                                ),
+                                child: _image == null ? Icon(Icons.add) : null,
+                              ),
+                            ),
+                            SizedBox(width: devWidth * 0.02),
+                            // Text(
+                            //   _image == null ? "" : _image.path,
+                            //   softWrap: true,
+                            //   style: TextStyle(color: Colors.grey),
+                            // ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: devHeight * 0.02),
+                      buildTextFormField(hintText: "Book Title", controllerName: _titleController),
+                      SizedBox(height: devHeight * 0.02),
+                      buildTextFormField(hintText: "Book Author", controllerName: _authorController),
+                      SizedBox(height: devHeight * 0.02),
+                      buildTextFormField(hintText: "Book Rating", controllerName: _ratingController),
+                      SizedBox(height: devHeight * 0.02),
+                      buildTextFormField(hintText: "Book Price", controllerName: _priceController),
+                      SizedBox(height: devHeight * 0.02),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: Container(
+                          decoration: BoxDecoration(border: Border.all(color: Colors.purple, width: 1), borderRadius: BorderRadius.circular(10.0)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                          child: DropdownButton(
+                            isExpanded: true,
+                            hint: Text("Select category"),
+                            value: valueChoised,
+                            style: TextStyle(color: Colors.black, fontSize: 18.0),
+                            underline: SizedBox(),
+                            // dropdownColor: Colors.grey,
+                            onChanged: (newValue) {
+                              setState(() {
+                                valueChoised = newValue;
+                              });
+                              // print("category: ${valueChoised.toString()}");
+                            },
+                            items: menuItems.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: devHeight * 0.05),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: Container(
+                          padding: EdgeInsets.all(5.0),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.grey,
+                            ),
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          child: TextFormField(
+                            controller: _descriptionController,
+                            maxLines: 5,
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                            ),
+                            validator: (value) {
+                              if (value.isEmpty) {
+                                return "Required";
+                              } else {
+                                return null;
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: devHeight * 0.05),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: MaterialButton(
+                    onPressed: () {
+                      print("button pressed");
+                      validateInput();
+                    },
+                    child: Text('Add Book', style: TextStyle(color: Colors.white, fontSize: 18.0)),
+                    color: Colors.purple,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                    height: 50.0,
+                    minWidth: double.infinity,
+                  ),
+                ),
+                SizedBox(height: devHeight * 0.05),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildTextFormField({@required String hintText, @required TextEditingController controllerName}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: TextFormField(
+        controller: controllerName,
+        style: TextStyle(fontSize: 18.0),
+        decoration: InputDecoration(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+          hintText: hintText,
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0), borderSide: BorderSide(color: Colors.purple)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0), borderSide: BorderSide(color: Colors.blue)),
+        ),
+        validator: (value) {
+          if (value.isEmpty) {
+            return "Required";
+          } else {
+            return null;
+          }
+        },
+      ),
+    );
+  }
+
+  //
+  //
+  //
   Future getImageFromGallery() async {
     final pickedFile = await picker.getImage(source: ImageSource.gallery);
 
@@ -33,6 +211,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _image = File(pickedFile.path);
         print("image = ${_image.path}");
       });
+      print(_image.path);
+      Get.back();
     } else {
       print('No image selected.');
     }
@@ -46,21 +226,21 @@ class _HomeScreenState extends State<HomeScreen> {
         _image = File(pickedFile.path);
         print("image = ${_image.path}");
       });
+      print(_image.path);
+      Get.back();
     } else {
       print('No image selected.');
     }
   }
 
-  Uri apiUrl = Uri.parse('https://ab-books-api.vercel.app/books');
-
+  //
+  //
   Future<Map<String, dynamic>> _uploadImage(File image) async {
-    final mimeTypeData =
-        lookupMimeType(image.path, headerBytes: [0xFF, 0xD8]).split('/');
+    final mimeTypeData = lookupMimeType(image.path, headerBytes: [0xFF, 0xD8]).split('/');
     // Intilize the multipart request
     final imageUploadRequest = http.MultipartRequest('POST', apiUrl);
     // Attach the file in the request
-    final file = await http.MultipartFile.fromPath('image', image.path,
-        contentType: MediaType(mimeTypeData[0], mimeTypeData[1]));
+    final file = await http.MultipartFile.fromPath('image', image.path, contentType: MediaType(mimeTypeData[0], mimeTypeData[1]));
     // Explicitly pass the extension of the image with request body
     // Since image_picker has some bugs due which it mixes up
     // image extension with file name like this filenamejpge
@@ -69,29 +249,25 @@ class _HomeScreenState extends State<HomeScreen> {
     //imageUploadRequest.fields['ext'] = mimeTypeData[1];
     imageUploadRequest.files.add(file);
     imageUploadRequest.fields['title'] = _titleController.text.toString();
-    imageUploadRequest.fields['category'] = _categoryController.text.toString();
-    imageUploadRequest.fields['description'] =
-        _descriptionController.text.toString();
+    imageUploadRequest.fields['category'] = valueChoised.toString();
+    imageUploadRequest.fields['description'] = _descriptionController.text.toString();
     imageUploadRequest.fields['author'] = _authorController.text.toString();
     imageUploadRequest.fields['rating'] = _ratingController.text.toString();
-    imageUploadRequest.fields['price'] =
-        "\$${_priceController.text.toString()}";
+    imageUploadRequest.fields['price'] = "\$${_priceController.text.toString()}";
     try {
       final streamedResponse = await imageUploadRequest.send();
       final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode == 201) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        showInSnackBar(bgColor: Colors.green, value: "uploaded successfully");
+        showInSnackBar(title: "Success", bgColor: Colors.green, message: "uploaded successfully");
         return responseData;
       } else {
         print(response.statusCode);
-        showInSnackBar(
-            bgColor: Colors.red,
-            value: "cant upload, status code ${response.statusCode}");
+        showInSnackBar(title: "Failed", bgColor: Colors.red, message: "cant upload, status code ${response.statusCode}");
         return null;
       }
     } catch (e) {
-      showInSnackBar(bgColor: Colors.red, value: "Cant upload error= $e");
+      showInSnackBar(title: "Failed", bgColor: Colors.red, message: "Cant upload error= $e");
       print(e);
       return null;
     }
@@ -110,128 +286,21 @@ class _HomeScreenState extends State<HomeScreen> {
       print(response);
     } else {
       print('not validated');
-      showInSnackBar(
-          bgColor: Colors.yellow,
-          value: "Please fill all inputs and choose image.");
+      showInSnackBar(title: "Failed", bgColor: Colors.yellow, message: "Please fill all inputs and choose image.");
     }
   }
 
-  void showInSnackBar({String value, Color bgColor}) {
-    _scaffoldKey.currentState.showSnackBar(
-      new SnackBar(
-        content: new Text(value,
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: bgColor,
-        duration: Duration(seconds: 5),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: AppBar(
-        title: Text('Book Uploader'),
-      ),
-      body: Container(
-        height: MediaQuery.of(context).size.height,
-        width: MediaQuery.of(context).size.width,
-        padding: EdgeInsets.all(20.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    MyTextField(
-                      hintText: "Title",
-                      controllerName: _titleController,
-                    ),
-                    MyTextField(
-                      hintText: "Category",
-                      controllerName: _categoryController,
-                    ),
-                    MyTextField(
-                      hintText: "Author",
-                      controllerName: _authorController,
-                    ),
-                    MyTextField(
-                      hintText: "Rating",
-                      controllerName: _ratingController,
-                    ),
-                    MyTextField(
-                      hintText: "Price",
-                      controllerName: _priceController,
-                    ),
-                    SizedBox(height: 15.0),
-                    Text("Description",
-                        style: TextStyle(color: Colors.grey[700])),
-                    SizedBox(height: 15.0),
-                    Container(
-                      padding: EdgeInsets.all(5.0),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.grey,
-                        ),
-                      ),
-                      child: TextFormField(
-                        controller: _descriptionController,
-                        maxLines: 5,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                        ),
-                        validator: (value) {
-                          if (value.isEmpty) {
-                            return "Required";
-                          } else {
-                            return null;
-                          }
-                        },
-                      ),
-                    ),
-                    SizedBox(height: 20.0),
-                    Text(
-                      'Image',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.grey[600]),
-                    ),
-                    Text(
-                      _image == null ? "" : _image.path,
-                      softWrap: true,
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    SizedBox(height: 20.0),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(
-                          onPressed: getImageFromGallery,
-                          icon: Icon(Icons.photo_album),
-                        ),
-                        IconButton(
-                          onPressed: getImageFromCamera,
-                          icon: Icon(Icons.camera),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-              SizedBox(height: 20.0),
-              MaterialButton(
-                onPressed: validateInput,
-                child: Text('Upload', style: TextStyle(color: Colors.white)),
-                color: Colors.deepOrangeAccent,
-                minWidth: double.infinity,
-                height: 50.0,
-              )
-            ],
-          ),
-        ),
-      ),
+  static void showInSnackBar({String title, String message, Color bgColor, Color txtColor = Colors.white}) {
+    return Get.snackbar(
+      title,
+      message,
+      duration: Duration(seconds: 5),
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: bgColor,
+      colorText: txtColor,
+      margin: const EdgeInsets.only(bottom: 20.0, left: 20.0, right: 20.0),
+      messageText: Text(message, style: TextStyle(fontWeight: FontWeight.bold, color: txtColor)),
+      titleText: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: txtColor, fontSize: 20.0)),
     );
   }
 }
