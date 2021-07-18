@@ -1,4 +1,5 @@
 import 'package:books_uploader_app/choice_screen.dart';
+import 'package:books_uploader_app/controllers/bookManager_controller.dart';
 import 'package:books_uploader_app/controllers/requests_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,7 @@ void main() async {
     statusBarIconBrightness: Brightness.dark,
   ));
   Get.put<RequestsController>(RequestsController());
+  Get.put<BookManagerController>(BookManagerController());
   runApp(MyApp());
 }
 

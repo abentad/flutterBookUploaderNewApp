@@ -23,8 +23,7 @@ class RequestsController extends GetxController {
     Uri adminUrl = Uri.parse("https://bookapi.rentoch.com/admin");
     var response = await http.get(adminUrl);
     var decodedData = jsonDecode(response.body);
-    print("printing");
-    print(decodedData);
+    print("Got Requesters");
     for (var i = 0; i < decodedData.length; i++) {
       _purchaserList.add(Purchaser.fromJson(decodedData[i]));
     }
